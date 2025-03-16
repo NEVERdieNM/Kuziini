@@ -1,4 +1,3 @@
-import base64
 import json
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from werkzeug.utils import secure_filename
@@ -6,18 +5,15 @@ import threading
 import webview
 import os
 import sys
-from modules.API import API
-from modules.helpers import get_db_connection
-import sqlite3
-import re
-
-from modules.insert_data import validate_and_insert_data
+from modules.api import api
+from modules.database.operations import validate_and_insert_data
+from modules.file_hadling.excel import process_file
 
 # SETUP FLASK
 app = Flask(__name__)
 app.secret_key = '0g4Ty9YfjicKKQgRexLMJMroCSZ0CTni'
 
-api = API() # pywebview api object
+api = api() # pywebview api object
 
 # html_file = os.path.abspath("static/upload.html")
 
@@ -49,7 +45,7 @@ def upload():
         file.save(save_path)
 
         # Process file
-        results = api.process_file(save_path)
+        results = process_file(save_path)
         if results:
             session['failed_rows'] = results['failed_rows']
             session['filename'] = results['filename']
@@ -94,8 +90,7 @@ def fix_errors():
             
 
             # Use our validation and insertion function
-            with sqlite3.connect('kuziini.db') as conn:
-                successful_rows, new_failed_rows = validate_and_insert_data(rows_to_insert, connection=conn)
+            successful_rows, new_failed_rows = validate_and_insert_data(rows_to_insert)
             
             # Check if all rows were successfully inserted
             if not new_failed_rows:
