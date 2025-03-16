@@ -7,7 +7,7 @@ import os
 import sys
 from modules.api import api
 from modules.database.operations import validate_and_insert_data
-from modules.file_hadling.excel import process_file
+from modules.file_handling.excel import process_file
 
 # SETUP FLASK
 app = Flask(__name__)
