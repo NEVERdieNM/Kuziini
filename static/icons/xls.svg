@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300">
+    <!-- Main document shape -->
+    <path d="M40 0 C 30 0 20 10 20 20 L20 280 C20 290 30 300 40 300 L200 300 C210 300 220 290 220 280 L220 60 L160 0 Z" fill="#0F7C3A"/>
+    <!-- Folded corner -->
+    <path d="M160 0 L160 60 L220 60 Z" fill="#0A5D29"/>
+    <!-- XLS text -->
+    <text x="120" y="180" font-family="Arial, sans-serif" font-size="65" font-weight="bold" text-anchor="middle" fill="white">XLS</text>
+</svg>

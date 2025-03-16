@@ -1,0 +1,126 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f5f5f7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 36px;
+    text-align: center;
+}
+
+.upload-container {
+    background-color: white;
+    border-radius: 12px;
+    padding: 40px;
+    width: 90%;
+    max-width: 800px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.drop-area {
+    border: 2px dashed #b0b0ff;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.drop-area.highlight {
+    border-color: #4a6bff;
+    background-color: rgba(74, 107, 255, 0.05);
+}
+
+.file-icon {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+}
+
+.drop-area h2 {
+    font-size: 22px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.separator {
+    display: block;
+    text-align: center;
+    margin: 20px 0;
+    color: #777;
+    font-size: 16px;
+}
+
+.browse-btn {
+    background-color: #4a6bff;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.browse-btn:hover {
+    background-color: #3a5be0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upload-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.upload-btn:hover {
+    background-color: #3e9c40;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.file-input {
+    display: none;
+}
+
+/* Add some basic animation for feedback */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.file-selected {
+    animation: pulse 0.5s ease;
+}
+
+/* File name display */
+.file-name-display {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #555;
+    word-break: break-all;
+}

@@ -1,0 +1,4 @@
+pywebview
+pandas
+openpyxl
+flask
