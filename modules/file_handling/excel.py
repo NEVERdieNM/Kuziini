@@ -65,8 +65,8 @@ def process_file(file_path):
             # })
         
         #DEBUGGING
-        with open('uploads/results.json', 'w') as f:
-            f.write(json.dumps(results, indent=4))
+        # with open('uploads/results.json', 'w') as f:
+        #     f.write(json.dumps(results, indent=4))
 
         return results # json.dumps(results)
 
@@ -148,20 +148,9 @@ def generate_excel_template(table_name='produse'):
     if 'id' in df.columns:
         df = df.drop('id', axis=1)
     
-    # Add some example data or guidance
-    sample_row = {
-        'categorie': 'Example Category',
-        'subcategorie': 'Example Subcategory',
-        'cod_produs': 'PROD001',
-        'pret_intrare': 100.50,
-        # Add more fields as needed
-    }
-    
-    df = df.append(sample_row, ignore_index=True)
-    
     # Save to Excel
-    os.makedirs('templates', exist_ok=True)
-    template_path = f'templates/{table_name}_template.xlsx'
+    os.makedirs('excel_templates', exist_ok=True)
+    template_path = f'excel_templates/{table_name}_template.xlsx'
     df.to_excel(template_path, index=False)
     
     return template_path
