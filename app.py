@@ -5,7 +5,7 @@ import threading
 import webview
 import os
 import sys
-from modules.as import api
+from modules.api import api
 from modules.database.operations import validate_and_insert_data
 from modules.file_handling.excel import process_file
 
@@ -16,7 +16,7 @@ app.secret_key = '0g4Ty9YfjicKKQgRexLMJMroCSZ0CTni'
 api = api() # pywebview api object
 
 # html_file = os.path.abspath("static/upload.html")
-
+    
 # webview.create_window("My App", html_file, js_api=api)
 # webview.start(debug=True)
 

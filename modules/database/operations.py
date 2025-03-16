@@ -45,6 +45,12 @@ def validate_and_insert_data(data_rows, table_name='produse', connection=None):
             'error_msg': "cannot be empty",
             'expected_type': "TEXT"
         },
+        'furnizor_id': {
+            'filter': lambda x: x is None or isinstance(x, int) or (isinstance(x, str) and x.isdigit()),
+            'error_msg': "must be a valid supplier ID",
+            'expected_type': "INTEGER"
+        },
+
         # Add more column validations as needed
     }
     
@@ -162,3 +168,10 @@ def handle_nan(value):
     if isinstance(value, float) and math.isnan(value):
         return None
     return value
+
+def get_table_schema(table_name):
+    """Get the schema of a table as a dictionary with column names as keys and types as values."""
+    with sqlite3.connect('kuziini.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        return {row[1]: {'type': row[2], 'not_null': row[3], 'pk': row[5]} for row in cursor.fetchall()}

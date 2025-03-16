@@ -3,7 +3,7 @@ import json
 import os
 import pandas as pd
 import sqlite3
-from modules.database.operations import validate_and_insert_data
+from modules.database.operations import get_table_schema, validate_and_insert_data
 
 # Remove global connection
 # conn = sqlite3.connect('kuziini.db')
@@ -71,6 +71,7 @@ def process_file(file_path):
         return results # json.dumps(results)
 
 
+
 def insert_excel_data_into_db(file_path):
     failed_rows = []
     
@@ -84,71 +85,6 @@ def insert_excel_data_into_db(file_path):
             rows = df.replace({float('nan'): None}).to_dict('records')
             successful_rows, failed_rows = validate_and_insert_data(rows, connection=conn)
 
-            # for index, row in df.iterrows():
-            #     categorie = row.get('categorie')
-            #     subcategorie = row.get('subcategorie')
-            #     camera = row.get('camera')
-            #     destinatie = row.get('destinatie')
-            #     colectie = row.get('colectie')
-            #     cod_produs = row.get('cod_produs')
-            #     descriere_scurta = row.get('descriere_scurta')
-            #     descriere_detaliata = row.get('descriere_detaliata')
-            #     dimensiuni = row.get('dimensiuni')
-            #     greutate = row.get('greutate')
-            #     cota_TVA = row.get('cota_TVA')
-            #     pret_intrare = row.get('pret_intrare')
-            #     pret_raft_fara_TVA = row.get('pret_raft_fara_TVA')
-            #     pret_recomandat = row.get('pret_recomandat')
-            #     poza_1 = row.get('poza_1')
-            #     poza_2 = row.get('poza_2')
-            #     termen_de_livrare = row.get('termen_de_livrare')
-            #     culoare = row.get('culoare')
-            #     atribute_specifice = row.get('atribute_specifice')
-            #     compatibil_cu = row.get('compatibil_cu')
-            #     furnizor_nume = row.get('furnizor_nume')
-            #     furnizor_id = row.get('furnizor_id')
-            #     try:
-            #         cur.execute("""
-            #             INSERT INTO produse (
-            #                 categorie, subcategorie, camera, destinatie, colectie,
-            #                 cod_produs, descriere_scurta, descriere_detaliata, dimensiuni,
-            #                 greutate, cota_TVA, pret_intrare, pret_raft_fara_TVA,
-            #                 pret_recomandat, poza_1, poza_2, termen_de_livrare,
-            #                 culoare, atribute_specifice, compatibil_cu,
-            #                 furnizor_nume, furnizor_id
-            #             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            #         """, (
-            #             categorie, subcategorie, camera, destinatie, colectie,
-            #             cod_produs, descriere_scurta, descriere_detaliata, dimensiuni,
-            #             greutate, cota_TVA, pret_intrare, pret_raft_fara_TVA,
-            #             pret_recomandat, poza_1, poza_2, termen_de_livrare,
-            #             culoare, atribute_specifice, compatibil_cu,
-            #             furnizor_nume, furnizor_id
-            #         ))
-            #         conn.commit()
-            #         # print(f"Inserted row {index + 2}")
-                    
-            #     except sqlite3.Error as e:
-            #         error_msg = str(e)
-            #         print(f"Failed to insert row {index + 2}: {error_msg}")
-            #         conn.rollback()
-
-            #         problematic_column_match = re.search(r"produse\.(\w+)", error_msg)
-            #         if problematic_column_match:
-            #             problematic_column = problematic_column_match.group(1)
-
-            #         problematic_column_type_match = re.search(r"value in\s+(\w+)", error_msg)
-            #         if problematic_column_type_match:
-            #             problematic_column_type = problematic_column_type_match.group(1)
-
-            #         failed_rows.append({
-            #             'excel_row_number': index + 2,
-            #             # 'row_id': cur.lastrowid,
-            #             'data': {key: handle_nan(value) for key, value in row.to_dict().items()}, # Replace NaN with None from all columns in row
-            #             'error': error_msg,
-            #             'problematic_column': problematic_column,
-            #             'problematic_colmun_type': problematic_column_type
-            #         })
             return failed_rows  
     except Exception as e:
         failed_rows.append({
@@ -158,3 +94,74 @@ def insert_excel_data_into_db(file_path):
         })
     
     return failed_rows
+
+
+
+def preprocess_excel(file_path):
+    """Preprocess Excel file to ensure it matches the expected format."""
+    df = pd.read_excel(file_path)
+    
+    # Get schema to compare against
+    schema = get_table_schema('produse')
+    
+    # Check for required columns
+    missing_columns = [col for col in schema if col not in df.columns and (col != 'id' or col != 'pret_raft_fara_TVA')]
+    if missing_columns:
+        return {
+            'success': False,
+            'error': f"Missing required columns: {', '.join(missing_columns)}",
+            'df': None
+        }
+    
+    # Remove any columns that don't exist in the schema
+    extra_columns = [col for col in df.columns if col not in schema]
+    if extra_columns:
+        df = df.drop(columns=extra_columns)
+    
+    # Convert types where possible
+    for col, details in schema.items():
+        if col in df.columns:
+            try:
+                if details['type'] == 'REAL':
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                elif details['type'] == 'INTEGER':
+                    df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')  # Int64 allows NaN
+            except Exception as e:
+                print(f"Error converting column {col}: {e}")
+    
+    return {
+        'success': True, 
+        'df': df,
+        'extra_columns': extra_columns
+    }
+
+
+
+def generate_excel_template(table_name='produse'):
+    """Generate an Excel template that matches the database schema."""
+    schema = get_table_schema(table_name)
+    
+    # Create a DataFrame with the columns from the schema
+    df = pd.DataFrame(columns=list(schema.keys()))
+    
+    # Remove 'id' as it's typically auto-generated
+    if 'id' in df.columns:
+        df = df.drop('id', axis=1)
+    
+    # Add some example data or guidance
+    sample_row = {
+        'categorie': 'Example Category',
+        'subcategorie': 'Example Subcategory',
+        'cod_produs': 'PROD001',
+        'pret_intrare': 100.50,
+        # Add more fields as needed
+    }
+    
+    df = df.append(sample_row, ignore_index=True)
+    
+    # Save to Excel
+    os.makedirs('templates', exist_ok=True)
+    template_path = f'templates/{table_name}_template.xlsx'
+    df.to_excel(template_path, index=False)
+    
+    return template_path
