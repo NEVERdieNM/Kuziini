@@ -143,7 +143,7 @@ def insert_excel_data_into_db(file_path):
 
                     failed_rows.append({
                         'excel_row_number': index + 2,
-                        'row_id': cur.lastrowid,
+                        # 'row_id': cur.lastrowid,
                         'data': {key: handle_nan(value) for key, value in row.to_dict().items()}, # Replace NaN with None from all columns in row
                         'error': error_msg,
                         'problematic_column': problematic_column,

@@ -1,103 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Document</title>
-        <link rel="stylesheet" href="static/css/fix_errors.css">
-    </head>
-    <body>
-        <div class="container">
-            <h1>Fix Import Errors</h1>
-            <div class="file-info">
-                <p><strong>File:</strong> {{ filename }}</p>
-                <p><strong>Status:</strong> {{ failed_rows[0].data.get('status', 'partially processed') }}</p>
-                <p><strong>Failed Rows:</strong> {{ failed_rows|length }}</p>
-            </div>
+{% extends "base.html" %}
 
-            <form id="fix-form" action="{{ url_for('fix_errors') }}" method="post">
-                <input type="hidden" name="corrections" id="corrections-data">
-                
-                {% for row in failed_rows %}
-                <div class="error-card" data-row-id="{{ row.row_id }}" data-excel-row="{{ row.excel_row_number }}">
-                    <div class="error-header">
-                        <h3>Row #{{ row.excel_row_number }}</h3>
-                        <div class="error-message">
-                            <span class="error-icon">⚠️</span>
-                            <span>{{ row.error }}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="problematic-field">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Value</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="problematic">
-                                    <td>{{ row.problematic_column }}</td>
-                                    <td>
-                                        <input type="text" 
-                                            class="error-input"
-                                            data-field="{{ row.problematic_column }}"
-                                            value="{{ row.data[row.problematic_column] }}" 
-                                            data-original="{{ row.data[row.problematic_column] }}"
-                                            data-expected-type="{{ row.problematic_colmun_type }}">
-                                        <div class="type-hint">
-                                            Expected type: {{ row.problematic_colmun_type }}
-                                            {% if row.problematic_colmun_type == "REAL" %}
-                                            (e.g. 12.04)
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        
-                        <button type="button" class="toggle-details-btn">Show All Fields</button>
-                    </div>
-                    
-                    <div class="all-fields" style="display: none;">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Value</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for field, value in row.data.items() %}
-                                {% if field != row.problematic_column %}
-                                <tr>
-                                    <td>{{ field }}</td>
-                                    <td>
-                                        <input type="text" 
-                                            class="regular-input"
-                                            data-field="{{ field }}"
-                                            value="{{ value if value is not none else '' }}" 
-                                            data-original="{{ value if value is not none else '' }}">
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endfor %}
 
-                <div class="form-actions">
-                    <button type="button" id="reset-all" class="btn btn-secondary">Reset All</button>
-                    <button type="submit" class="btn btn-primary">Save Corrections</button>
-                </div>
-            </form>
+{% block head %}
+    <link rel="stylesheet" href="static/css/fix_errors.css">
+{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <h1>Fix Import Errors</h1>
+        <div class="file-info">
+            <p><strong>File:</strong> {{ filename }}</p>
+            <p><strong>Status:</strong> {{ failed_rows[0].data.get('status', 'partially processed') }}</p>
+            <p><strong>Failed Rows:</strong> {{ failed_rows|length }}</p>
         </div>
-        <script src="{{ url_for('static', filename='js/fix_errors.js') }}"></script>
-    </body>
-</html>
+
+        <form id="fix-form" action="{{ url_for('fix_errors') }}" method="post">
+            <input type="hidden" name="corrections" id="corrections-data">
+            
+            {% for row in failed_rows %}
+            <div class="error-card" data-row-id="{{ row.row_id }}" data-excel-row="{{ row.excel_row_number }}">
+                <div class="error-header">
+                    <h3>Row #{{ row.excel_row_number }}</h3>
+                    <div class="error-message">
+                        <span class="error-icon">⚠️</span>
+                        <span>{{ row.error }}</span>
+                    </div>
+                </div>
+                
+                <div class="problematic-field">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="problematic">
+                                <td>{{ row.problematic_column }}</td>
+                                <td>
+                                    <input type="text" 
+                                        class="error-input"
+                                        data-field="{{ row.problematic_column }}"
+                                        value="{{ row.data[row.problematic_column] }}" 
+                                        data-original="{{ row.data[row.problematic_column] }}"
+                                        data-expected-type="{{ row.problematic_colmun_type }}">
+                                    <div class="type-hint">
+                                        Expected type: {{ row.problematic_colmun_type }}
+                                        {% if row.problematic_colmun_type == "REAL" %}
+                                        (e.g. 12.04)
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <button type="button" class="toggle-details-btn">Show All Fields</button>
+                </div>
+                
+                <div class="all-fields" style="display: none;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for field, value in row.data.items() %}
+                            {% if field != row.problematic_column %}
+                            <tr>
+                                <td>{{ field }}</td>
+                                <td>
+                                    <input type="text" 
+                                        class="regular-input"
+                                        data-field="{{ field }}"
+                                        value="{{ value if value is not none else '' }}" 
+                                        data-original="{{ value if value is not none else '' }}">
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+
+            <div class="form-actions">
+                <button type="button" id="reset-all" class="btn btn-secondary">Reset All</button>
+                <button type="submit" class="btn btn-primary">Save Corrections</button>
+            </div>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='js/fix_errors.js') }}"></script>
+{% endblock %}
 
 
 

@@ -1,49 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "base.html" %}
+
+{% block head %}
     <title>Upload Your Files</title>
     <link rel="stylesheet" href="static/css/upload.css">
-    <style>
-        .flash-messages {
-            position: fixed;
-            top: 0;
-            right: 0;
-            padding: 10px;
-            z-index: 1000;
-        }
+{% endblock %}
 
-        .flash-message {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        }
-
-        .flash-message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .flash-message.success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-    </style>
-</head>
-<body>
-    <!-- flash messages section -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="flash-message {{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+{% block body %}
     <h1>Upload Your Files</h1>
-    
+
     <div class="upload-container">
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <div id="drop-area" class="drop-area">
@@ -61,8 +25,5 @@
         </form>
     </div>
 
-    <script src="static/js/upload.js">
-        
-    </script>
-</body>
-</html>
+    <script src="static/js/upload.js"></script>
+{% endblock %}

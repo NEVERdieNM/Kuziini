@@ -11,6 +11,8 @@ from modules.helpers import get_db_connection
 import sqlite3
 import re
 
+from modules.insert_data import validate_and_insert_data
+
 # SETUP FLASK
 app = Flask(__name__)
 app.secret_key = '0g4Ty9YfjicKKQgRexLMJMroCSZ0CTni'
@@ -51,6 +53,7 @@ def upload():
         if results:
             session['failed_rows'] = results['failed_rows']
             session['filename'] = results['filename']
+            flash(f"File uploaded successfully. {len(results['failed_rows'])} rows have issues.", 'warning')
             return redirect(url_for('fix_errors'))
 
         flash('File uploaded successfully', 'success')
@@ -70,11 +73,47 @@ def fix_errors():
         return render_template('fix_errors.html', failed_rows=failed_rows, filename=filename)
 
     elif request.method == 'POST':
-        # Get the corrections data from the form
-        corrections_json = request.form.get('corrections')
-        corrections = json.loads(corrections_json)
-        
-        return corrections_json
+        try:
+            # Get the corrections data from the form
+            corrections_json = request.form.get('corrections')
+            corrections = json.loads(corrections_json)
+            
+            
+            # Prepare a list to collect all the updated rows for insertion
+            rows_to_insert = []
+            
+            # Process each correction
+            for correction in corrections:
+                # Get the cleaned data from the correction
+                rows_to_insert.append(correction['data'])
+
+            for row in rows_to_insert:
+                for key, value in row.items():
+                    if value == '':
+                        row[key] = None
+            
+
+            # Use our validation and insertion function
+            with sqlite3.connect('kuziini.db') as conn:
+                successful_rows, new_failed_rows = validate_and_insert_data(rows_to_insert, connection=conn)
+            
+            # Check if all rows were successfully inserted
+            if not new_failed_rows:
+                flash(f"Successfully fixed and imported {len(successful_rows)} products.", "success")
+                session.pop('failed_rows', None)
+                return redirect(url_for('index'))
+            else:
+                # Some rows still have issues
+                session['failed_rows'] = new_failed_rows
+                flash(f"Fixed {len(successful_rows)} products, but {len(new_failed_rows)} still have issues.", "warning")
+                return redirect(url_for('fix_errors'))
+                
+        except json.JSONDecodeError:
+            flash('Invalid data format received', 'error')
+            return redirect(url_for('fix_errors'))
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}', 'error')
+            return redirect(url_for('fix_errors'))
 
 
 def start_server():
@@ -87,5 +126,5 @@ if __name__ == '__main__':
     t.start()
 
     webview.create_window("PyWebView & Flask", "http://localhost/")
-    webview.start(debug=True) # debug=True
+    webview.start() # debug=True
     sys.exit()
