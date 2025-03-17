@@ -9,7 +9,7 @@ from modules.database.operations import get_table_schema, validate_and_insert_da
 # conn = sqlite3.connect('kuziini.db')
 # cur = conn.cursor()
 
-def process_file(file_path):
+def process_file(file_path, table_name):
         results = {}
 
         # Get file info
@@ -38,7 +38,7 @@ def process_file(file_path):
         
         # Process file
         if name.endswith(('.xls', '.xlsx')):
-            failed_rows = insert_excel_data_into_db(save_path)
+            failed_rows = insert_excel_data_into_db(save_path, table_name)
             if failed_rows:
                 results = {
                     'filename': name,
@@ -48,21 +48,19 @@ def process_file(file_path):
                     'failed_rows': failed_rows
                 }
             else:
-                # results.append({
-                #     'filename': name,
-                #     'size': size,
-                #     'path': save_path,
-                #     'status': 'processed'
-                # })
-                results = None
+                results = {
+                    'filename': name,
+                    'size': size,
+                    'path': save_path,
+                    'status': 'processed'
+                }
         else:
-            results = None
-            # results.append({
-            #     'filename': name,
-            #     'size': size,
-            #     'path': save_path,
-            #     'status': 'uploaded'
-            # })
+            results = {
+                'filename': name,
+                'size': size,
+                'path': save_path,
+                'status': 'invalid file type'
+            }
         
         #DEBUGGING
         # with open('uploads/results.json', 'w') as f:
@@ -72,7 +70,7 @@ def process_file(file_path):
 
 
 
-def insert_excel_data_into_db(file_path):
+def insert_excel_data_into_db(file_path, table_name):
     failed_rows = []
     
     try:
@@ -83,7 +81,7 @@ def insert_excel_data_into_db(file_path):
             df = pd.read_excel(file_path)
 
             rows = df.replace({float('nan'): None}).to_dict('records')
-            successful_rows, failed_rows = validate_and_insert_data(rows, connection=conn)
+            successful_rows, failed_rows = validate_and_insert_data(rows, table_name, connection=conn)
 
             return failed_rows  
     except Exception as e:
@@ -97,7 +95,7 @@ def insert_excel_data_into_db(file_path):
 
 
 
-def preprocess_excel(file_path):
+def preprocess_produse_excel(file_path):
     """Preprocess Excel file to ensure it matches the expected format."""
     df = pd.read_excel(file_path)
     
@@ -137,7 +135,7 @@ def preprocess_excel(file_path):
 
 
 
-def generate_excel_template(table_name='produse'):
+def generate_excel_template(table_name):
     """Generate an Excel template that matches the database schema."""
     schema = get_table_schema(table_name)
     

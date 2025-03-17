@@ -4,7 +4,7 @@ import re
 from modules.database.connection import get_db_connection
 
 
-def validate_and_insert_data(data_rows, table_name='produse', connection=None):
+def validate_and_insert_data(data_rows, table_name, connection=None):
     """
     Validates and inserts data into the database, applying column-specific filters.
     
@@ -20,6 +20,7 @@ def validate_and_insert_data(data_rows, table_name='produse', connection=None):
     """
     # Define validation filters for specific columns
     validation_filters = {
+        # Filtre Produse
         'pret_intrare': {
             'filter': lambda x: isinstance(x, (int, float)) or (isinstance(x, str) and x.replace('.', '', 1).isdigit()),
             'error_msg': "must be a valid number",
@@ -51,7 +52,8 @@ def validate_and_insert_data(data_rows, table_name='produse', connection=None):
             'expected_type': "INTEGER"
         },
 
-        # Add more column validations as needed
+        # Filtre Furnizori
+        
     }
     
     successful_rows = []

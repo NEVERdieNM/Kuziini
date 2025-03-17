@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 
-
 {% block head %}
     <link rel="stylesheet" href="static/css/fix_errors.css">
 {% endblock %}
 
 {% block body %}
     <div class="container">
-        <h1>Fix Import Errors</h1>
+        <h1>Fix {{ table_name|title }} Import Errors</h1>
         <div class="file-info">
             <p><strong>File:</strong> {{ filename }}</p>
+            <p><strong>Table:</strong> {{ table_name|title }}</p>
             <p><strong>Status:</strong> {{ failed_rows[0].data.get('status', 'partially processed') }}</p>
             <p><strong>Failed Rows:</strong> {{ failed_rows|length }}</p>
         </div>
 
         <form id="fix-form" action="{{ url_for('fix_errors') }}" method="post">
             <input type="hidden" name="corrections" id="corrections-data">
+            <input type="hidden" name="table_name" value="{{ table_name }}">
             
             {% for row in failed_rows %}
             <div class="error-card" data-row-id="{{ row.row_id }}" data-excel-row="{{ row.excel_row_number }}">
