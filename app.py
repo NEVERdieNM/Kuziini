@@ -15,11 +15,6 @@ app.secret_key = '0g4Ty9YfjicKKQgRexLMJMroCSZ0CTni'
 
 api = api() # pywebview api object
 
-# html_file = os.path.abspath("static/upload.html")
-    
-# webview.create_window("My App", html_file, js_api=api)
-# webview.start(debug=True)
-
 @app.route('/')
 def index():
     return redirect(url_for('upload'))
