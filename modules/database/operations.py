@@ -88,7 +88,6 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
                 if value == 1:
                     print(value, filter_func(value))
                 if value is not None and not filter_func(value):
-                    print("IT CAUGHT IT", value)
                     validation_errors.append({
                         'column': column,
                         'value': value,
@@ -100,7 +99,6 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
         if validation_errors:
             failed_row = {
                 'excel_row_number': row_index + 2,  # +2 to account for header and 0-indexing
-                # 'row_id': generate_row_id(row_index, cleaned_data),
                 'data': cleaned_data,
                 'validation_errors': validation_errors,
                 'error': f"Validation failed for {', '.join([e['column'] for e in validation_errors])}",
@@ -151,7 +149,6 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
                 
             failed_row = {
                 'excel_row_number': row_index + 2,  # +2 to account for header and 0-indexing
-                # 'row_id': generate_row_id(row_index, cleaned_data),
                 'data': cleaned_data,
                 'error': error_msg,
                 'problematic_column': problematic_column,
