@@ -2,7 +2,7 @@ myenv
 __pycache__
 uploads/*
 excel_templates/*
-
-flask_session
+exports/*
+flask_session/*
 
 !.gitkeep

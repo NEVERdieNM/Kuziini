@@ -1,13 +1,13 @@
-{% extends "base.html" %}
+{% extends "nav_header.html" %}
 
-{% block head %}
+{% block page_head %}
     <title>Upload Your Files</title>
     <link rel="stylesheet" href="static/css/upload.css">
 {% endblock %}
 
-{% block body %}
-    <h1>Upload Your Files</h1>
+{% block page_title %}Upload Your Files{% endblock %}
 
+{% block page_content %}
     <div class="upload-container">
         <form action="/upload/produse" method="POST" enctype="multipart/form-data">
             <div class="file-type-selector">

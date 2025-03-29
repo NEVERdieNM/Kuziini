@@ -7,6 +7,7 @@ import webview
 import os
 import sys
 from modules.api import api
+from modules.database.connection import get_db_connection
 from modules.database.operations import validate_and_insert_data, insert_duplicate_data_row
 from modules.file_handling.excel import generate_excel_template, process_file
 
@@ -31,7 +32,7 @@ def index():
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if request.method == 'GET':
-        return render_template('upload.html')
+        return render_template('upload.html', active_page='upload')
     
     return jsonify({"error": "Invalid request"})
  
@@ -268,6 +269,76 @@ def download_template(table_name):
     except Exception as e:
         flash(f'Error generating template: {str(e)}', 'error')
         return redirect(url_for('upload'))
+
+#########################################################################################
+
+@app.route('/export', methods=['GET'])
+def export_page():
+    """Render the export page."""
+    # Get list of available tables
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+    tables = [table[0] for table in cursor.fetchall()]
+    conn.close()
+    
+    return render_template('export.html', tables=tables, active_page='export')
+
+##########################################################################################
+
+@app.route('/export/table/<table_name>', methods=['GET'])
+def export_table(table_name):
+    """Export a specific table to Excel."""
+    from modules.file_handling.export import export_table_to_excel
+    
+    try:
+        result = export_table_to_excel(table_name)
+        
+        if result['success']:
+            flash(f"Successfully exported {result['row_count']} rows from {table_name} table.", "success")
+            return send_file(
+                result['file_path'],
+                as_attachment=True,
+                download_name=f"{table_name}_export.xlsx",
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:
+            flash(f"Error exporting table: {result['error']}", "error")
+            return redirect(url_for('export_page'))
+    
+    except Exception as e:
+        flash(f"Error exporting table: {str(e)}", "error")
+        return redirect(url_for('export_page'))
+
+############################################################################################
+
+@app.route('/export/all', methods=['GET'])
+def export_all_tables():
+    """Export all tables to a single Excel file."""
+    from modules.file_handling.export import export_all_tables
+    
+    try:
+        result = export_all_tables()
+        
+        if result['success']:
+            # Prepare a message showing table counts
+            table_counts = [f"{table}: {count} rows" for table, count in result['tables'].items()]
+            tables_info = ", ".join(table_counts)
+            
+            flash(f"Successfully exported tables ({tables_info}).", "success")
+            return send_file(
+                result['file_path'],
+                as_attachment=True,
+                download_name="database_export.xlsx",
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:
+            flash(f"Error exporting tables: {result['error']}", "error")
+            return redirect(url_for('export_page'))
+    
+    except Exception as e:
+        flash(f"Error exporting tables: {str(e)}", "error")
+        return redirect(url_for('export_page'))
 
 def start_server():
     app.run(host='0.0.0.0', port=80)

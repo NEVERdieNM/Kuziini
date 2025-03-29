@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <style>
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            background-color: #f0f0f0;
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background-color: #e0e0e0;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-link.active {
+            background-color: #4a6bff;
+            color: white;
+        }
+        
+        .nav-link.export {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .nav-link.export:hover {
+            background-color: #3e9c40;
+        }
+        
+        .nav-link.upload {
+            background-color: #4a6bff;
+            color: white;
+        }
+        
+        .nav-link.upload:hover {
+            background-color: #3a5be0;
+        }
+    </style>
+    {% block page_head %}{% endblock %}
+{% endblock %}
+
+{% block body %}
+    <h1>{% block page_title %}{% endblock %}</h1>
+    
+    <div class="nav-links">
+        <a href="{{ url_for('upload') }}" class="nav-link {% if active_page == 'upload' %}active upload{% endif %}">Upload</a>
+        <a href="{{ url_for('export_page') }}" class="nav-link {% if active_page == 'export' %}active export{% endif %}">Export Database</a>
+    </div>
+
+    {% block page_content %}{% endblock %}
+{% endblock %}

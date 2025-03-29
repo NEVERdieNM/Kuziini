@@ -1,0 +1,37 @@
+{% extends "nav_header.html" %}
+
+{% block page_head %}
+    <title>Export Database</title>
+    <link rel="stylesheet" href="static/css/export.css">
+{% endblock %}
+
+{% block page_title %}Export Database to Excel{% endblock %}
+
+{% block page_content %}
+    <div class="export-container">
+        <div class="export-options">
+            <div class="export-option">
+                <h2>Export All Tables</h2>
+                <p>Export all database tables to a single Excel file with multiple sheets.</p>
+                <a href="{{ url_for('export_all_tables') }}" class="export-btn">Export All Tables</a>
+            </div>
+            
+            <div class="export-option">
+                <h2>Export Individual Tables</h2>
+                <p>Select a specific table to export:</p>
+                
+                <div class="table-list">
+                    {% for table in tables %}
+                    <div class="table-item">
+                        <span class="table-name">{{ table }}</span>
+                        <a href="{{ url_for('export_table', table_name=table) }}" class="table-export-btn">
+                            <img src="static/icons/excel.svg" alt="excel icon" width="24" height="24">
+                            Export
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
