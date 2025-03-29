@@ -7,7 +7,7 @@ import webview
 import os
 import sys
 from modules.api import api
-from modules.database.operations import validate_and_insert_data
+from modules.database.operations import validate_and_insert_data, insert_duplicate_data_row
 from modules.file_handling.excel import generate_excel_template, process_file
 
 # SETUP FLASK
@@ -121,6 +121,8 @@ def upload_furnizori():
 def fix_errors():
     if request.method == 'GET':
         if 'failed_rows' not in session:
+            session.pop('filename')
+            session.pop('table_name')
             return redirect(url_for('upload'))
         
         failed_rows = session.get('failed_rows', [])
@@ -193,6 +195,31 @@ def confirm_duplicates():
                               duplicate_rows=duplicate_rows,
                               filename=filename,
                               table_name=table_name)
+    
+    if request.method =='POST':
+        action = request.form.get('action', 'cancel')
+
+        if 'duplicate_rows' not in session or action == 'cancel':
+            session.pop('filename')
+            session.pop('table_name')
+            return redirect(url_for('upload'))
+        
+        if action == 'confirm':
+
+            selected_products = request.form.getlist('selected_products')
+            duplicate_rows = session.get('duplicate_rows')
+            table_name = session.get('table_name')
+
+            successful_overwrites = 0
+
+            for duplicate_row in duplicate_rows:
+                if duplicate_row['cod_produs'] in selected_products:
+                    success, err_msg = insert_duplicate_data_row(duplicate_row, table_name)
+                    if success:
+                        successful_overwrites += 1
+
+            flash(f"successfully overwritten {successful_overwrites} {table_name} out of {len(selected_products)}", f"{'success' if successful_overwrites == len(selected_products) else 'warning'}")
+            return redirect(url_for('upload'))
 
 #########################################################################################
 

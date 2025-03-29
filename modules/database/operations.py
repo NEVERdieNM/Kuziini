@@ -197,6 +197,80 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
     
     return successful_rows, failed_rows, duplicate_rows
 
+def insert_duplicate_data_row(data_row, table_name, connection=None):
+    """
+    Updates an existing database row with data from an Excel import when a duplicate is found.
+    
+    Args:
+        data_row (dict): Dictionary containing the row data to update, with both new_data and existing_data
+        table_name (str): Name of the table to update
+        connection: Optional SQLite connection object (if None, one will be created)
+        
+    Returns:
+        bool: True if update was successful, False otherwise
+        str: Error message if update failed, empty string otherwise
+    """
+    
+    close_conn = False
+    
+    # Create connection if not provided
+    if connection is None:
+        connection = get_db_connection()
+        close_conn = True
+    
+    cursor = connection.cursor()
+    
+    try:
+        # Extract the product code and new data
+        product_code = data_row.get('cod_produs')
+        new_data = data_row.get('new_data', {})
+        
+        if not product_code or not new_data:
+            return False, "Missing product code or update data"
+        
+        # Get table schema to validate fields
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        table_schema = {row[1]: row[2] for row in cursor.fetchall()}
+        
+        # Prepare the SQL update
+        set_clauses = []
+        values = []
+        
+        # Create SET clauses for each column except cod_produs and id
+        for key, value in new_data.items():
+            # Skip the product code itself, id, and fields not in schema
+            if key != 'cod_produs' and key != 'id' and key in table_schema:
+                set_clauses.append(f"{key} = ?")
+                values.append(value)
+        
+        # If no fields to update, return success
+        if not set_clauses:
+            return True, ""
+        
+        # Add the WHERE condition value
+        values.append(product_code)
+        
+        # Build and execute the update query
+        query = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE cod_produs = ?"
+        cursor.execute(query, values)
+        connection.commit()
+        
+        # Check if a row was actually updated
+        if cursor.rowcount == 0:
+            return False, f"Product with code {product_code} not found"
+        
+        return True, ""
+        
+    except sqlite3.Error as e:
+        # Rollback in case of error
+        connection.rollback()
+        return False, str(e)
+    
+    finally:
+        # Close connection if we created it
+        if close_conn:
+            connection.close()
+
 # Function to replace NaN with None
 def handle_nan(value):
     if isinstance(value, float) and math.isnan(value):
