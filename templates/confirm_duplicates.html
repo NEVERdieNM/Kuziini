@@ -3,183 +3,7 @@
 {% block head %}
     <title>Confirm Duplicates - {{ table_name|title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fix_errors.css') }}">
-    <style>
-        .change-highlight {
-            background-color: #fff8e1;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        
-        .data-comparison {
-            display: flex;
-            margin-bottom: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        
-        .data-col {
-            flex: 1;
-            padding: 10px;
-        }
-        
-        .existing-data {
-            background-color: #f9f9f9;
-            border-right: 1px solid #eee;
-        }
-        
-        .new-data {
-            background-color: #f0f7ff;
-        }
-        
-        .field-diff {
-            display: flex;
-            padding: 5px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .field-name {
-            flex: 1;
-            font-weight: bold;
-        }
-        
-        .field-value {
-            flex: 2;
-        }
-        
-        .different-value {
-            background-color: #fffde7;
-            font-weight: bold;
-        }
-        
-        .product-header {
-            background-color: #f5f5f5;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border-left: 4px solid #2196F3;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .product-info {
-            flex: 1;
-        }
-        
-        .product-checkbox {
-            margin-left: 15px;
-        }
-        
-        .product-checkbox label {
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        
-        .product-checkbox input[type="checkbox"] {
-            margin-right: 5px;
-            transform: scale(1.2);
-        }
-        
-        .actions {
-            margin-top: 20px;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .summary {
-            background-color: #e8f5e9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid #4caf50;
-        }
-        
-        .select-all-container {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            background-color: #f5f5f5;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        
-        .select-all-container label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            margin-right: 15px;
-            font-weight: bold;
-        }
-        
-        .select-all-container input[type="checkbox"] {
-            margin-right: 5px;
-            transform: scale(1.2);
-        }
-        
-        .changes-summary {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-        
-        .changes-summary h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-        
-        .changes-summary ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .changes-summary li {
-            margin-bottom: 5px;
-        }
-        
-        .btn {
-            padding: 10px 16px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            transition: background-color 0.2s;
-        }
-        
-        .btn-primary {
-            background-color: #2196F3;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: #1976D2;
-        }
-        
-        .btn-secondary {
-            background-color: #f5f5f5;
-            color: #333;
-            border: 1px solid #ddd;
-        }
-        
-        .btn-secondary:hover {
-            background-color: #e0e0e0;
-        }
-        
-        /* Counter for selected rows */
-        .selected-count {
-            margin-left: auto;
-            padding: 4px 8px;
-            background-color: #2196F3;
-            color: white;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/confirm_duplicates.css') }}">
 {% endblock %}
 
 {% block body %}
@@ -204,6 +28,7 @@
                         Select/Deselect All
                     </label>
                     <span id="selected-counter" class="selected-count">{{ duplicate_rows|length }} / {{ duplicate_rows|length }} selected</span>
+                    <button type="button" id="toggle-all-btn" class="toggle-all-btn">Show All Details</button>
                 </div>
                 
                 <h2>Products to Update</h2>
@@ -216,55 +41,60 @@
                                 <h3>Product Code: {{ row.cod_produs }}</h3>
                                 <p>Excel Row: {{ row.excel_row_number }}</p>
                             </div>
-                            <div class="product-checkbox">
-                                <label>
-                                    <input type="checkbox" name="selected_products" value="{{ row.cod_produs }}" class="product-select" checked>
-                                    Include this product
-                                </label>
+                            <div style="display: flex; align-items: center;">
+                                <div class="product-checkbox">
+                                    <label>
+                                        <input type="checkbox" name="selected_products" value="{{ row.cod_produs }}" class="product-select" checked>
+                                        Include this product
+                                    </label>
+                                </div>
+                                <button type="button" class="toggle-details-btn">Show Details</button>
                             </div>
                         </div>
                         
-                        <div class="data-comparison">
-                            <div class="data-col existing-data">
-                                <h4>Existing Data</h4>
-                                {% for key, value in row.existing_data.items() %}
-                                    {% if key != 'id' and key not in ("id", "pret_raft_fara_TVA", "furnizor_id") %}
-                                    <div class="field-diff">
-                                        <span class="field-name">{{ key }}:</span>
-                                        <span class="field-value">{{ value }}</span>
-                                    </div>
-                                    {% endif %}
-                                {% endfor %}
+                        <div class="product-details">
+                            <div class="data-comparison">
+                                <div class="data-col existing-data">
+                                    <h4>Existing Data</h4>
+                                    {% for key, value in row.existing_data.items() %}
+                                        {% if key != 'id' and key not in ("id", "pret_raft_fara_TVA", "furnizor_id") %}
+                                        <div class="field-diff">
+                                            <span class="field-name">{{ key }}:</span>
+                                            <span class="field-value">{{ value }}</span>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                
+                                <div class="data-col new-data">
+                                    <h4>New Data</h4>
+                                    {% for key, value in row.new_data.items() %}
+                                        {% if key not in ("id", "pret_raft_fara_TVA", "furnizor_id") %}
+                                        <div class="field-diff">
+                                            <span class="field-name">{{ key }}:</span>
+                                            <span class="field-value {% if key in row.existing_data and row.existing_data[key] != value %}different-value{% endif %}">
+                                                {{ value }}
+                                            </span>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
                             </div>
                             
-                            <div class="data-col new-data">
-                                <h4>New Data</h4>
+                            <div class="changes-summary">
+                                <h4>Changes Summary:</h4>
+                                <ul>
                                 {% for key, value in row.new_data.items() %}
-                                    {% if key not in ("id", "pret_raft_fara_TVA", "furnizor_id") %}
-                                    <div class="field-diff">
-                                        <span class="field-name">{{ key }}:</span>
-                                        <span class="field-value {% if key in row.existing_data and row.existing_data[key] != value %}different-value{% endif %}">
-                                            {{ value }}
-                                        </span>
-                                    </div>
+                                    {% if key in row.existing_data and row.existing_data[key] != value and key not in ("id", "pret_raft_fara_TVA", "furnizor_id") %}
+                                        <li>
+                                            <strong>{{ key }}:</strong> 
+                                            <span class="change-highlight">{{ row.existing_data[key] }}</span> → 
+                                            <span class="change-highlight">{{ value }}</span>
+                                        </li>
                                     {% endif %}
                                 {% endfor %}
+                                </ul>
                             </div>
-                        </div>
-                        
-                        <div class="changes-summary">
-                            <h4>Changes Summary:</h4>
-                            <ul>
-                            {% for key, value in row.new_data.items() %}
-                                {% if key in row.existing_data and row.existing_data[key] != value and key not in ("id", "pret_raft_fara_TVA", "furnizor_id") %}
-                                    <li>
-                                        <strong>{{ key }}:</strong> 
-                                        <span class="change-highlight">{{ row.existing_data[key] }}</span> → 
-                                        <span class="change-highlight">{{ value }}</span>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-                            </ul>
                         </div>
                     </div>
                 {% endfor %}
@@ -282,51 +112,5 @@
         {% endif %}
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const selectAllCheckbox = document.getElementById('select-all');
-            const productCheckboxes = document.querySelectorAll('.product-select');
-            const selectedCounter = document.getElementById('selected-counter');
-            const totalCount = productCheckboxes.length;
-            
-            // Update counter function
-            function updateCounter() {
-                const selectedCount = document.querySelectorAll('.product-select:checked').length;
-                selectedCounter.textContent = `${selectedCount} / ${totalCount} selected`;
-            }
-            
-            // Set up select all checkbox
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', function() {
-                    const isChecked = this.checked;
-                    
-                    productCheckboxes.forEach(checkbox => {
-                        checkbox.checked = isChecked;
-                    });
-                    
-                    updateCounter();
-                });
-            }
-            
-            // Set up product checkboxes
-            productCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    // Check if all checkboxes are checked
-                    const allChecked = Array.from(productCheckboxes).every(cb => cb.checked);
-                    const anyChecked = Array.from(productCheckboxes).some(cb => cb.checked);
-                    
-                    // Update select all checkbox
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = allChecked;
-                        selectAllCheckbox.indeterminate = !allChecked && anyChecked;
-                    }
-                    
-                    updateCounter();
-                });
-            });
-            
-            // Initial counter update
-            updateCounter();
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/confirm_duplicates.js') }}"></script>
 {% endblock %}

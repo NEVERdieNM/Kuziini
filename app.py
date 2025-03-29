@@ -105,12 +105,20 @@ def upload_furnizori():
 
     # Process file for furnizori table
     results = process_file(save_path, 'furnizori')
-    if results and results.get('failed_rows'):
-        session['failed_rows'] = results['failed_rows']
-        session['filename'] = results['filename']
-        session['table_name'] = 'furnizori'  # Store the table name for the fix_errors route
-        flash(f"File uploaded successfully. {len(results['failed_rows'])} rows have issues.", 'warning')
-        return redirect(url_for('fix_errors'))
+    if results and results.get('status') == 'partially processed':
+
+        if results.get('failed_rows'):
+            session['failed_rows'] = results['failed_rows']
+
+        if results.get('duplicate_rows'):
+            session['duplicate_rows'] = results['duplicate_rows']
+        
+        if results.get('failed_rows'):
+            flash(f"File uploaded successfully. {len(results['failed_rows'])} rows have issues.", 'warning')
+            return redirect(url_for('fix_errors'))
+        elif results.get('duplicate_rows'):
+            flash(f"File uploaded successfully. {len(results['duplicate_rows'])} rows are duplicates.", 'warning')
+            return redirect(url_for('confirm_duplicates'))
 
     flash('Furnizori file uploaded successfully', 'success')
     return redirect(url_for('upload'))
@@ -160,17 +168,26 @@ def fix_errors():
                 table_name=table_name
             )
             
-            # Check if all rows were successfully inserted
-            if not new_failed_rows:
-                flash(f"Successfully fixed and imported {len(successful_rows)} {table_name}.", "success")
-                session.pop('failed_rows', None)
-                session.pop('table_name', None)
-                return redirect(url_for('index'))
-            else:
+            if new_failed_rows:
                 # Some rows still have issues
                 session['failed_rows'] = new_failed_rows
                 flash(f"Fixed {len(successful_rows)} {table_name}, but {len(new_failed_rows)} still have issues.", "warning")
                 return redirect(url_for('fix_errors'))
+            
+            elif duplicate_rows or 'duplicate_rows' in session:
+                session.pop('failed_rows')
+                session_duplicate_rows = session['duplicate_rows']
+                session_duplicate_rows.extend(duplicate_rows)
+                session['duplicate_rows'] = session_duplicate_rows
+                flash(f"Fixed and imported {len(successful_rows)} {table_name}, but {len(duplicate_rows)} already exist in the database.", "warning")
+                return redirect(url_for('confirm_duplicates'))
+            
+            else:
+                flash(f"Successfully fixed and imported {len(successful_rows)} {table_name}.", "success")
+                session.pop('failed_rows', None)
+                session.pop('table_name', None)
+                return redirect(url_for('index'))
+
                 
         except json.JSONDecodeError:
             flash('Invalid data format received', 'error')
@@ -210,13 +227,22 @@ def confirm_duplicates():
             duplicate_rows = session.get('duplicate_rows')
             table_name = session.get('table_name')
 
+            if table_name == 'furnizori':
+                return jsonify('no support for duplicates handling for table furnizori yet...', 'error')
+
             successful_overwrites = 0
 
             for duplicate_row in duplicate_rows:
                 if duplicate_row['cod_produs'] in selected_products:
                     success, err_msg = insert_duplicate_data_row(duplicate_row, table_name)
+                    if err_msg:
+                        print(err_msg)
                     if success:
                         successful_overwrites += 1
+
+            session.pop('filename')
+            session.pop('table_name')
+            session.pop('duplicate_rows')
 
             flash(f"successfully overwritten {successful_overwrites} {table_name} out of {len(selected_products)}", f"{'success' if successful_overwrites == len(selected_products) else 'warning'}")
             return redirect(url_for('upload'))
