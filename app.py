@@ -1,5 +1,6 @@
 import json
 from flask import Flask, render_template, request, jsonify, redirect, send_file, url_for, session, flash
+from flask_session import Session
 from werkzeug.utils import secure_filename
 import threading
 import webview
@@ -12,6 +13,12 @@ from modules.file_handling.excel import generate_excel_template, process_file
 # SETUP FLASK
 app = Flask(__name__)
 app.secret_key = '0g4Ty9YfjicKKQgRexLMJMroCSZ0CTni'
+
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_FILE_DIR"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flask_session")
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_USE_SIGNER"] = True
+Session(app)
 
 api = api() # pywebview api object
 
@@ -49,12 +56,24 @@ def upload_produse():
     # Process file for produse table
     results = process_file(save_path, 'produse')
     if results and results.get('status') == 'partially processed':
-        session['failed_rows'] = results['failed_rows']
         session['filename'] = results['filename']
         session['table_name'] = 'produse'  # Store the table name for the fix_errors route
-        flash(f"File uploaded successfully. {len(results['failed_rows'])} rows have issues.", 'warning')
-        return redirect(url_for('fix_errors'))
 
+        if results.get('failed_rows'):
+            session['failed_rows'] = results['failed_rows']
+
+        if results.get('duplicate_rows'):
+            session['duplicate_rows'] = results['duplicate_rows']
+        
+        if results.get('failed_rows'):
+            flash(f"File uploaded successfully. {len(results['failed_rows'])} rows have issues.", 'warning')
+            return redirect(url_for('fix_errors'))
+        elif results.get('duplicate_rows'):
+            flash(f"File uploaded successfully. {len(results['duplicate_rows'])} rows are duplicates.", 'warning')
+            return redirect(url_for('confirm_duplicates'))
+
+        
+        
     elif results and results.get('status') == 'processed':
         flash('Produse file uploaded successfully', 'success')
         return redirect(url_for('upload'))
@@ -134,7 +153,7 @@ def fix_errors():
                         row[key] = None
             
             # Use our validation and insertion function with the appropriate table name
-            successful_rows, new_failed_rows = validate_and_insert_data(
+            successful_rows, new_failed_rows, duplicate_rows = validate_and_insert_data(
                 rows_to_insert, 
                 table_name=table_name
             )
@@ -159,6 +178,23 @@ def fix_errors():
             return redirect(url_for('fix_errors'))
 
 ########################################################################################
+
+@app.route('/confirm_duplicates', methods=['GET', 'POST'])
+def confirm_duplicates():
+    if request.method == 'GET':
+        if 'duplicate_rows' not in session:
+            return redirect(url_for('upload'))
+        
+        duplicate_rows = session.get('duplicate_rows', [])
+        filename = session.get('filename', '')
+        table_name = session.get('table_name', '')
+        
+        return render_template('confirm_duplicates.html',
+                              duplicate_rows=duplicate_rows,
+                              filename=filename,
+                              table_name=table_name)
+
+#########################################################################################
 
 @app.route('/download_template/<table_name>', methods=['GET'])
 def download_template(table_name):

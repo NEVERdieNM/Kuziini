@@ -2,3 +2,4 @@ pywebview
 pandas
 openpyxl
 flask
+Flask-Session

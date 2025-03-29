@@ -38,15 +38,20 @@ def process_file(file_path, table_name):
         
         # Process file
         if name.endswith(('.xls', '.xlsx')):
-            failed_rows = insert_excel_data_into_db(save_path, table_name)
-            if failed_rows:
+            _, failed_rows, duplicate_rows = insert_excel_data_into_db(save_path, table_name)
+            if failed_rows or duplicate_rows:
                 results = {
                     'filename': name,
                     'size': size,
                     'path': save_path,
                     'status': 'partially processed',
-                    'failed_rows': failed_rows
                 }
+
+                if failed_rows:
+                    results['failed_rows'] = failed_rows
+                if duplicate_rows:
+                    results['duplicate_rows'] = duplicate_rows
+
             else:
                 results = {
                     'filename': name,
@@ -63,8 +68,8 @@ def process_file(file_path, table_name):
             }
         
         #DEBUGGING
-        # with open('uploads/results.json', 'w') as f:
-        #     f.write(json.dumps(results, indent=4))
+        with open('uploads/results.json', 'w') as f:
+            f.write(json.dumps(results, indent=4))
 
         return results # json.dumps(results)
 
@@ -72,7 +77,9 @@ def process_file(file_path, table_name):
 
 def insert_excel_data_into_db(file_path, table_name):
     failed_rows = []
-    
+    duplicate_rows = []
+    successful_rows = []
+
     try:
         # Create connection inside function
         with sqlite3.connect('kuziini.db') as conn:
@@ -81,9 +88,9 @@ def insert_excel_data_into_db(file_path, table_name):
             df = pd.read_excel(file_path)
 
             rows = df.replace({float('nan'): None}).to_dict('records')
-            successful_rows, failed_rows = validate_and_insert_data(rows, table_name, connection=conn)
+            successful_rows, failed_rows, duplicate_rows = validate_and_insert_data(rows, table_name, connection=conn)
 
-            return failed_rows  
+            return successful_rows, failed_rows, duplicate_rows
     except Exception as e:
         failed_rows.append({
             'row_number': 'N/A',
@@ -91,7 +98,7 @@ def insert_excel_data_into_db(file_path, table_name):
             'error': f"Failed to read Excel file: {str(e)}"
         })
     
-    return failed_rows
+    return successful_rows, failed_rows, duplicate_rows
 
 
 

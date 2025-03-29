@@ -58,6 +58,7 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
     
     successful_rows = []
     failed_rows = []
+    duplicate_rows = []
     close_conn = False
     
     # Create connection if not provided
@@ -69,11 +70,11 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
     
     # Get table schema to validate against correct column types
     cursor.execute(f"PRAGMA table_info({table_name})")
-    table_schema = {row[1]: row[2] for row in cursor.fetchall()}
+    table_schema = get_table_schema(table_name)
     
     for row_index, row_data in enumerate(data_rows):
         # Clean the data - handle NaN values, etc.
-        cleaned_data = {key: handle_nan(value) for key, value in row_data.items()}
+        cleaned_data = clean_and_format_data(row_data, table_schema)
         
         # Validate each column against its filter
         validation_errors = []
@@ -107,6 +108,40 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
             }
             failed_rows.append(failed_row)
             continue
+            
+        # Check if product code already exists in the database
+        if 'cod_produs' in cleaned_data and cleaned_data['cod_produs']:
+            # Execute query to check if cod_produs exists
+            cursor.execute(
+                "SELECT * FROM produse WHERE cod_produs = ?", 
+                (cleaned_data['cod_produs'],)
+            )
+            existing_product = cursor.fetchone()
+            
+            if existing_product:
+                # Convert DB row to dictionary
+                columns = [column[0] for column in cursor.description]
+                existing_data = dict(zip(columns, existing_product))
+                
+                existing_data.pop("id", None)
+                existing_data.pop("pret_raft_fara_TVA", None)
+                existing_data.pop("furnizor_id", None)
+
+                #if the new data doesn't have any changes, ignore it
+                if existing_data == cleaned_data:
+                    continue
+
+                # Create a record with both existing and new data
+                duplicate_row = {
+                    'excel_row_number': row_index + 2,  # +2 for header and 0-indexing
+                    'new_data': cleaned_data,
+                    'existing_data': existing_data,
+                    'cod_produs': cleaned_data['cod_produs']
+                }
+                
+                # Add to duplicate_rows list
+                duplicate_rows.append(duplicate_row)
+                continue
         
         # If no validation errors, attempt to insert
         try:
@@ -160,7 +195,7 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
     if close_conn:
         connection.close()
     
-    return successful_rows, failed_rows
+    return successful_rows, failed_rows, duplicate_rows
 
 # Function to replace NaN with None
 def handle_nan(value):
@@ -174,3 +209,57 @@ def get_table_schema(table_name):
         cursor = conn.cursor()
         cursor.execute(f"PRAGMA table_info({table_name})")
         return {row[1]: {'type': row[2], 'not_null': row[3], 'pk': row[5]} for row in cursor.fetchall()}
+    
+def clean_and_format_data(row_data, table_schema):
+    """
+    Clean and format row data according to the table schema.
+    
+    Args:
+        row_data (dict): Dictionary containing the row data to be cleaned
+        table_schema (dict): Dictionary with column names as keys and column types as values
+        
+    Returns:
+        dict: Cleaned and properly formatted data
+    """
+    # First, handle NaN values
+    cleaned_data = {key: handle_nan(value) for key, value in row_data.items()}
+    
+    # Then format according to column types in schema
+    for column, value in cleaned_data.items():
+
+        # Skip None values
+        if value is None:
+            continue
+            
+        # Skip columns not in the schema
+        if column not in table_schema:
+            continue
+            
+        column_type = table_schema[column]['type']
+
+        # Convert values based on column type
+        if column_type in ('TEXT', 'VARCHAR', 'CHAR', 'STRING'):
+            # Convert to string for text columns
+            cleaned_data[column] = str(value).strip()
+        # elif column_type in ('INTEGER', 'INT'):
+        #     # Try to convert to integer
+        #     try:
+        #         cleaned_data[column] = int(float(value))
+        #     except (ValueError, TypeError):
+        #         # If conversion fails, keep the original value
+        #         pass
+        # elif column_type in ('REAL', 'FLOAT', 'DOUBLE'):
+        #     # Try to convert to float
+        #     try:
+        #         cleaned_data[column] = float(value)
+        #     except (ValueError, TypeError):
+        #         # If conversion fails, keep the original value
+        #         pass
+        # elif column_type == 'BOOLEAN':
+        #     # Handle boolean values
+        #     if isinstance(value, str):
+        #         cleaned_data[column] = value.lower() in ('true', 't', 'yes', 'y', '1')
+        #     else:
+        #         cleaned_data[column] = bool(value)
+                
+    return cleaned_data
