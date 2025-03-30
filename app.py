@@ -8,7 +8,7 @@ import os
 import sys
 from modules.api import api
 from modules.database.connection import get_db_connection
-from modules.database.operations import validate_and_insert_data, insert_duplicate_data_row
+from modules.database.operations import update_product_rows_with_furnizor_id, validate_and_insert_data, insert_duplicate_data_row
 from modules.file_handling.excel import generate_excel_template, process_file
 
 # SETUP FLASK
@@ -66,6 +66,7 @@ def upload_produse():
         session['table_name'] = 'produse'  # Store the table name for the fix_errors route
 
         if results.get('failed_rows'):
+            return results.get('failed_rows')
             session['failed_rows'] = results['failed_rows']
 
         if results.get('duplicate_rows'):
@@ -241,7 +242,7 @@ def confirm_duplicates():
             if table_name == 'furnizori':
                 return jsonify('no support for duplicates handling for table furnizori yet...', 'error')
 
-            successful_overwrites = 0
+            successfully_overwritten_rows = []
 
             for duplicate_row in duplicate_rows:
                 if duplicate_row['cod_produs'] in selected_products:
@@ -249,13 +250,15 @@ def confirm_duplicates():
                     if err_msg:
                         print(err_msg)
                     if success:
-                        successful_overwrites += 1
+                        successfully_overwritten_rows.append(duplicate_row)
+
+            update_product_rows_with_furnizor_id(successfully_overwritten_rows)
 
             session.pop('filename')
             session.pop('table_name')
             session.pop('duplicate_rows')
 
-            flash(f"successfully overwritten {successful_overwrites} {table_name} out of {len(selected_products)}", f"{'success' if successful_overwrites == len(selected_products) else 'warning'}")
+            flash(f"successfully overwritten {len(successfully_overwritten_rows)} {table_name} out of {len(selected_products)}", f"{'success' if len(successfully_overwritten_rows) == len(selected_products) else 'warning'}")
             return redirect(url_for('upload'))
 
 #########################################################################################
@@ -359,6 +362,6 @@ if __name__ == '__main__':
     t.daemon = True
     t.start()
 
-    webview.create_window("PyWebView & Flask", "http://localhost/")
+    webview.create_window("", "http://localhost/")
     webview.start() # debug=True
     sys.exit()

@@ -4,7 +4,7 @@ import re
 from modules.database.connection import get_db_connection
 
 
-def validate_and_insert_data(data_rows, table_name, connection=None):
+def validate_and_insert_data(data_rows, table_name, conn=None):
     """
     Validates and inserts data into the database, applying column-specific filters.
     
@@ -62,11 +62,11 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
     close_conn = False
     
     # Create connection if not provided
-    if connection is None:
-        connection = get_db_connection()
+    if conn is None:
+        conn = get_db_connection()
         close_conn = True
     
-    cursor = connection.cursor()
+    cursor = conn.cursor()
     
     # Get table schema to validate against correct column types
     cursor.execute(f"PRAGMA table_info({table_name})")
@@ -134,9 +134,10 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
                 existing_data.pop("furnizor_id", None)
                 cleaned_data.pop("furnizor_id", None)
 
-                print(existing_data)
-                print(f"\n {existing_data == cleaned_data}\n {dict_differences(existing_data, cleaned_data)} \n\n")
-                print(cleaned_data)
+                # DEBUGGING
+                # print(existing_data)
+                # print(f"\n {existing_data == cleaned_data}\n {dict_differences(existing_data, cleaned_data)} \n\n")
+                # print(cleaned_data)
 
                 #if the new data doesn't have any changes, ignore it
                 if existing_data == cleaned_data:
@@ -164,15 +165,15 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
             # Build and execute the insert query
             query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
             cursor.execute(query, values)
-            connection.commit()
+            conn.commit()
             
             # Add to successful rows
-            successful_rows.append(cursor.lastrowid)
+            successful_rows.append(cleaned_data)
             
         except sqlite3.Error as e:
             error_msg = str(e)
             print(error_msg)
-            connection.rollback()
+            conn.rollback()
             
             # Try to extract problematic column from error message
             problematic_column_match = re.search(f"{table_name}\.(\w+)", error_msg)
@@ -202,9 +203,11 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
             }
             failed_rows.append(failed_row)
     
+    update_product_rows_with_furnizor_id(successful_rows, conn)
+
     # Close connection if we created it
     if close_conn:
-        connection.close()
+        conn.close()
     
     return successful_rows, failed_rows, duplicate_rows
 
@@ -349,7 +352,204 @@ def clean_and_format_data(row_data, table_schema):
                 
     return cleaned_data
 
-# FOR DEBUGGING
+def update_products_with_furnizor_id(conn=None):
+    """
+    Updates all products in the database with the correct furnizor_id by matching the 
+    furnizor_nume field with entries in the furnizori table.
+    
+    Returns:
+        dict: A dictionary containing statistics about the update operation:
+            - 'total_products': Total number of products processed
+            - 'updated_products': Number of products successfully updated
+            - 'failed_products': Number of products that couldn't be updated
+            - 'not_found_suppliers': List of supplier names that couldn't be found
+    """
+    close_conn = False
+    if not conn:
+        close_conn = True
+        conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Statistics for operation summary
+    stats = {
+        'total_products': 0,
+        'updated_products': 0,
+        'failed_products': 0,
+        'not_found_suppliers': set()
+    }
+    
+    try:
+        # Get all products that have a furnizor_nume but no furnizor_id
+        cursor.execute("""
+            SELECT id, furnizor_nume 
+            FROM produse 
+            WHERE furnizor_nume IS NOT NULL 
+        """)
+        # AND (furnizor_id IS NULL OR furnizor_id = '')
+
+
+        products = cursor.fetchall()
+        
+        stats['total_products'] = len(products)
+        
+        # Process each product
+        for product in products:
+            product_id = product['id']
+            furnizor_nume = product['furnizor_nume']
+            
+            # Skip if furnizor_nume is empty
+            if not furnizor_nume or furnizor_nume.strip() == '':
+                stats['failed_products'] += 1
+                continue
+            
+            # Find matching supplier in furnizori table
+            # NOTE: este posibil sa trebuieasca sa adaug LIKE, dar pentru a nu corupe datele, voi folosi fix pe fix deocamdata
+            cursor.execute("""
+                SELECT id FROM furnizori 
+                WHERE furnizor_nume = ?
+            """, (furnizor_nume,))
+            # cursor.execute("""
+            #     SELECT id FROM furnizori 
+            #     WHERE nume = ? OR nume LIKE ? OR ? LIKE CONCAT('%', nume, '%')
+            # """, (furnizor_nume, f"%{furnizor_nume}%", furnizor_nume))
+            
+            supplier = cursor.fetchone()
+            
+            if supplier:
+                # Update the product with the found furnizor_id
+                cursor.execute("""
+                    UPDATE produse 
+                    SET furnizor_id = ? 
+                    WHERE id = ?
+                """, (supplier['id'], product_id))
+                
+                stats['updated_products'] += 1
+            else:
+                # Supplier not found
+                stats['failed_products'] += 1
+                stats['not_found_suppliers'].add(furnizor_nume)
+        
+        # Commit changes
+        conn.commit()
+        
+        # Convert set to list for JSON serialization
+        stats['not_found_suppliers'] = list(stats['not_found_suppliers'])
+        
+        return stats
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise e
+    finally:
+        if close_conn:
+            conn.close()
+
+def update_product_rows_with_furnizor_id(data_rows, conn=None):
+
+    # NOTE: aceasta functie este chemata doar in validate_and_insert_data, este posibil sa trebuieasca sa fie chemata si din app.py de unde insert_duplicate_data_row() este chemata
+
+    """
+    Updates products in the database with their corresponding furnizor_id
+    by matching the furnizor_nume field with entries in the furnizori table.
+    
+    Args:
+        data_rows (list): List of dictionaries containing product data rows
+        conn: Optional database connection
+        
+    Returns:
+        dict: Statistics about the update operation:
+            - 'total_rows': Total number of rows processed
+            - 'updated_rows': Number of rows successfully updated
+            - 'failed_rows': Number of rows that couldn't be updated
+            - 'not_found_suppliers': List of supplier names that couldn't be found
+    """
+    close_conn = False
+    if not conn:
+        close_conn = True
+        conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Statistics for operation summary
+    stats = {
+        'total_rows': len(data_rows),
+        'updated_rows': 0,
+        'failed_rows': 0,
+        'not_found_suppliers': set()
+    }
+    
+    # Create a cache of supplier names to IDs to minimize database queries
+    furnizor_cache = {}
+    
+    try:
+        conn.execute("BEGIN TRANSACTION")
+        
+        # Process each data row
+        for row in data_rows:
+            # Skip if row doesn't have necessary fields
+            if 'furnizor_nume' not in row or not row['furnizor_nume'] or 'cod_produs' not in row:
+                stats['failed_rows'] += 1
+                continue
+            
+            furnizor_nume = row['furnizor_nume']
+            cod_produs = row['cod_produs']
+            
+            # Skip if furnizor_nume is empty or cod_produs is missing
+            if not furnizor_nume.strip() or not cod_produs:
+                stats['failed_rows'] += 1
+                continue
+            
+            # Check cache first
+            if furnizor_nume in furnizor_cache:
+                furnizor_id = furnizor_cache[furnizor_nume]
+            else:
+                # Look up in database if not in cache
+                cursor.execute("""
+                    SELECT id FROM furnizori 
+                    WHERE furnizor_nume = ?
+                """, (furnizor_nume,))
+                
+                furnizor = cursor.fetchone()
+                if furnizor:
+                    # Add to cache for future lookups
+                    furnizor_id = furnizor[0]
+                    furnizor_cache[furnizor_nume] = furnizor_id
+                else:
+                    # Supplier not found
+                    stats['failed_rows'] += 1
+                    stats['not_found_suppliers'].add(furnizor_nume)
+                    continue
+            
+            # Update the product in the database with the found furnizor_id
+            try:
+                cursor.execute("""
+                    UPDATE produse 
+                    SET furnizor_id = ? 
+                    WHERE cod_produs = ?
+                """, (furnizor_id, cod_produs))
+                
+                if cursor.rowcount > 0:
+                    stats['updated_rows'] += 1
+                else:
+                    stats['failed_rows'] += 1
+            except sqlite3.Error:
+                stats['failed_rows'] += 1
+        
+        # Commit changes
+        conn.commit()
+        
+        # Convert set to list for JSON serialization
+        stats['not_found_suppliers'] = list(stats['not_found_suppliers'])
+        
+        return stats
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise e
+    finally:
+        if close_conn:
+            conn.close()
+
+# FOR DEBUGGING used at line 137
 def dict_differences(dict1, dict2):
                     """Find differences between two dictionaries and return them in a readable format."""
                     all_keys = set(dict1.keys()) | set(dict2.keys())

@@ -89,7 +89,6 @@ def insert_excel_data_into_db(file_path, table_name):
     try:
         # Create connection inside function
         with sqlite3.connect('kuziini.db') as conn:
-            cur = conn.cursor()
 
             df = pd.read_excel(file_path)
 
@@ -105,7 +104,7 @@ def insert_excel_data_into_db(file_path, table_name):
                 return None, None, None, incorrect_table
 
 
-            successful_rows, failed_rows, duplicate_rows = validate_and_insert_data(rows, table_name, connection=conn)
+            successful_rows, failed_rows, duplicate_rows = validate_and_insert_data(rows, table_name, conn=conn)
 
             return successful_rows, failed_rows, duplicate_rows, incorrect_table
     except Exception as e:
@@ -114,6 +113,7 @@ def insert_excel_data_into_db(file_path, table_name):
             'data': None,
             'error': f"Failed to read Excel file: {str(e)}"
         })
+        raise e
     
     return successful_rows, failed_rows, duplicate_rows, incorrect_table
 
