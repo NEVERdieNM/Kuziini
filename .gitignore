@@ -5,4 +5,7 @@ excel_templates/*
 exports/*
 flask_session/*
 
+launch.py
+exec.py
+
 !.gitkeep
