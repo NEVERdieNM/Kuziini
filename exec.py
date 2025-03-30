@@ -1,3 +1,3 @@
 from modules.database.operations import *
 
-update_products_with_furnizor_id()
+calculate_pret_fara_TVA_for_products()

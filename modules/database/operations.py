@@ -549,6 +549,140 @@ def update_product_rows_with_furnizor_id(data_rows, conn=None):
         if close_conn:
             conn.close()
 
+def calculate_pret_fara_TVA_for_products(conn=None):
+    """
+    Updates all products in the database with the correct pret_raft_fara_TVA value
+    by calculating it based on the adaos_comercial of the product's supplier.
+    
+    The calculation uses the formula:
+    pret_raft_fara_TVA = pret_intrare * (1 + adaos_comercial)
+    
+    Uses a cache to minimize database queries for supplier adaos_comercial values.
+    
+    Args:
+        conn: Optional SQLite connection object (if None, one will be created)
+        
+    Returns:
+        dict: A dictionary containing statistics about the update operation:
+            - 'total_products': Total number of products processed
+            - 'updated_products': Number of products successfully updated
+            - 'failed_products': Number of products that couldn't be updated
+            - 'no_supplier_products': Number of products without a supplier
+            - 'no_adaos_suppliers': Number of products with suppliers missing adaos_comercial
+    """
+    
+    close_conn = False
+    if not conn:
+        close_conn = True
+        conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Statistics for operation summary
+    stats = {
+        'total_products': 0,
+        'updated_products': 0,
+        'failed_products': 0,
+        'no_supplier_products': 0,
+        'no_adaos_suppliers': 0,
+        'suppliers_without_adaos': set()
+    }
+    
+    # Create a cache for supplier adaos values to minimize database queries
+    adaos_cache = {}
+    
+    try:
+        # First, build the cache of all suppliers with their adaos_comercial
+        cursor.execute("SELECT id, furnizor_nume, adaos_comercial FROM furnizori")
+        suppliers = cursor.fetchall()
+        
+        for supplier in suppliers:
+            adaos_cache[supplier['id']] = {
+                'adaos_comercial': supplier['adaos_comercial'],
+                'nume': supplier['furnizor_nume']
+            }
+        
+        # Get all products with their price and supplier ID
+        cursor.execute("""
+            SELECT 
+                id, 
+                cod_produs,
+                pret_intrare, 
+                furnizor_id
+            FROM 
+                produse
+            WHERE 
+                pret_intrare IS NOT NULL
+        """)
+        
+        products = cursor.fetchall()
+        stats['total_products'] = len(products)
+        
+        # Begin transaction for batch update
+        conn.execute("BEGIN TRANSACTION")
+        
+        # Process each product
+        for product in products:
+            product_id = product['id']
+            cod_produs = product['cod_produs']
+            pret_intrare = product['pret_intrare']
+            furnizor_id = product['furnizor_id']
+            
+            # Skip if product has no price
+            if pret_intrare is None or pret_intrare == 0:
+                stats['failed_products'] += 1
+                continue
+            
+            # Skip if product has no supplier
+            if furnizor_id is None:
+                stats['no_supplier_products'] += 1
+                continue
+            
+            # Get supplier adaos_comercial from cache
+            supplier_info = adaos_cache.get(furnizor_id)
+            
+            # Skip if supplier has no adaos_comercial
+            if supplier_info is None or supplier_info['adaos_comercial'] is None:
+                stats['no_adaos_suppliers'] += 1
+                if supplier_info:
+                    stats['suppliers_without_adaos'].add(supplier_info['nume'])
+                continue
+            
+            adaos_comercial = supplier_info['adaos_comercial']
+            
+            # Calculate pret_raft_fara_TVA using the formula
+            try:
+                pret_raft_fara_TVA = pret_intrare *(1 + adaos_comercial)
+                
+                # Round to 2 decimal places for currency
+                pret_raft_fara_TVA = round(pret_raft_fara_TVA, 2)
+                
+                # Update the product
+                cursor.execute("""
+                    UPDATE produse 
+                    SET pret_raft_fara_TVA = ? 
+                    WHERE id = ?
+                """, (pret_raft_fara_TVA, product_id))
+                
+                stats['updated_products'] += 1
+            except Exception as e:
+                print(f"Error updating product {cod_produs}: {str(e)}")
+                stats['failed_products'] += 1
+        
+        # Commit changes
+        conn.commit()
+        
+        # Convert set to list for JSON serialization
+        stats['suppliers_without_adaos'] = list(stats['suppliers_without_adaos'])
+        
+        return stats
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        raise e
+    finally:
+        if close_conn:
+            conn.close()
+
 # FOR DEBUGGING used at line 137
 def dict_differences(dict1, dict2):
                     """Find differences between two dictionaries and return them in a readable format."""
