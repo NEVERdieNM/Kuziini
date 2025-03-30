@@ -569,6 +569,7 @@ def calculate_pret_fara_TVA_for_products(conn=None):
             - 'failed_products': Number of products that couldn't be updated
             - 'no_supplier_products': Number of products without a supplier
             - 'no_adaos_suppliers': Number of products with suppliers missing adaos_comercial
+            - 'no_initial_price_products': Number of products that do not have an initial price (pret_intrare_fara_TVA)
     """
     
     close_conn = False
@@ -580,6 +581,7 @@ def calculate_pret_fara_TVA_for_products(conn=None):
     # Statistics for operation summary
     stats = {
         'total_products': 0,
+        'no_initial_price_products': 0,
         'updated_products': 0,
         'failed_products': 0,
         'no_supplier_products': 0,
@@ -601,6 +603,19 @@ def calculate_pret_fara_TVA_for_products(conn=None):
                 'nume': supplier['furnizor_nume']
             }
         
+        # Get all products which don't have an initial price
+        cursor.execute("""
+            SELECT
+                id
+            FROM    
+                produse
+            WHERE
+                pret_intrare IS NULL       
+                       """)
+        
+        no_initial_price_products = cursor.fetchall()
+        stats["no_initial_price_products"] = len(no_initial_price_products)
+
         # Get all products with their price and supplier ID
         cursor.execute("""
             SELECT 
@@ -615,7 +630,7 @@ def calculate_pret_fara_TVA_for_products(conn=None):
         """)
         
         products = cursor.fetchall()
-        stats['total_products'] = len(products)
+        stats['total_products'] = len(products) + len(no_initial_price_products)
         
         # Begin transaction for batch update
         conn.execute("BEGIN TRANSACTION")
@@ -641,7 +656,7 @@ def calculate_pret_fara_TVA_for_products(conn=None):
             supplier_info = adaos_cache.get(furnizor_id)
             
             # Skip if supplier has no adaos_comercial
-            if supplier_info is None or supplier_info['adaos_comercial'] is None:
+            if supplier_info is None or supplier_info['adaos_comercial'] is None or supplier_info['adaos_comercial'] == 0:
                 stats['no_adaos_suppliers'] += 1
                 if supplier_info:
                     stats['suppliers_without_adaos'].add(supplier_info['nume'])

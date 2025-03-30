@@ -8,7 +8,7 @@ import os
 import sys
 from modules.api import api
 from modules.database.connection import get_db_connection
-from modules.database.operations import update_product_rows_with_furnizor_id, validate_and_insert_data, insert_duplicate_data_row
+from modules.database.operations import calculate_pret_fara_TVA_for_products, update_product_rows_with_furnizor_id, update_products_with_furnizor_id, validate_and_insert_data, insert_duplicate_data_row
 from modules.file_handling.excel import generate_excel_template, process_file
 
 # SETUP FLASK
@@ -352,6 +352,69 @@ def export_all_tables():
     except Exception as e:
         flash(f"Error exporting tables: {str(e)}", "error")
         return redirect(url_for('export_page'))
+
+##############################################################################################
+
+@app.route('/operations')
+def operations_page():
+    """Render the database operations page."""
+    return render_template('operations.html', active_page='operations')
+
+##############################################################################################
+
+@app.route('/operations/calculate_prices', methods=['POST'])
+def calculate_prices():
+    """Calculate product shelf prices without VAT."""
+    try:
+        # Call the function from operations.py
+        stats = calculate_pret_fara_TVA_for_products()
+        
+        # Prepare the response
+        success = stats['updated_products'] > 0
+        response = {
+            'success': success,
+            'stats': stats,
+            'message': f"Successfully updated {stats['updated_products']} of {stats['total_products']} products."
+        }
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        # Handle errors
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': f"Error calculating prices: {str(e)}"
+        }), 500
+
+##############################################################################################
+
+@app.route('/operations/update_suppliers', methods=['POST'])
+def update_suppliers():
+    """Update products with their supplier IDs."""
+    try:
+        # Call the function from operations.py
+        stats = update_products_with_furnizor_id()
+        
+        # Prepare the response
+        success = stats['updated_products'] > 0
+        response = {
+            'success': success,
+            'stats': stats,
+            'message': f"Successfully updated {stats['updated_products']} of {stats['total_products']} products."
+        }
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        # Handle errors
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': f"Error updating suppliers: {str(e)}"
+        }), 500
+    
+##############################################################################################
 
 def start_server():
     app.run(host='0.0.0.0', port=80)

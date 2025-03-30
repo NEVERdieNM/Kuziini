@@ -48,6 +48,15 @@
         .nav-link.upload:hover {
             background-color: #3a5be0;
         }
+        
+        .nav-link.operations {
+            background-color: #ff9800;
+            color: white;
+        }
+        
+        .nav-link.operations:hover {
+            background-color: #f57c00;
+        }
     </style>
     {% block page_head %}{% endblock %}
 {% endblock %}
@@ -56,6 +65,7 @@
     <h1>{% block page_title %}{% endblock %}</h1>
     
     <div class="nav-links">
+        <a href="{{ url_for('operations_page') }}" class="nav-link {% if active_page == 'operations' %}active operations{% endif %}">Operations</a>
         <a href="{{ url_for('upload') }}" class="nav-link {% if active_page == 'upload' %}active upload{% endif %}">Upload</a>
         <a href="{{ url_for('export_page') }}" class="nav-link {% if active_page == 'export' %}active export{% endif %}">Export Database</a>
     </div>

@@ -1,0 +1,56 @@
+{% extends "nav_header.html" %}
+
+{% block page_head %}
+    <title>Database Operations</title>
+    <link rel="stylesheet" href="static/css/operations.css">
+{% endblock %}
+
+{% block page_title %}Database Operations{% endblock %}
+
+{% block page_content %}
+    <div class="operations-container">
+        <div class="operations-card">
+            <h2>Product Price Calculation</h2>
+            <p>Calculate product shelf prices without VAT based on entry prices and supplier markup.</p>
+            <div class="operation-details">
+                <div class="operation-info">
+                    <p><i>This operation updates the <strong>pret_raft_fara_TVA</strong> field for all products that have:</i></p>
+                    <ul>
+                        <li>A valid entry price (<strong>pret_intrare</strong>)</li>
+                        <li>An associated supplier with a defined markup (<strong>adaos_comercial</strong>)</li>
+                    </ul>
+                    <p><i>Formula: pret_raft_fara_TVA = pret_intrare * (1 + adaos_comercial)</i></p>
+                </div>
+                <button id="calculate-prices-btn" class="operation-btn" data-operation="calculate_prices">
+                    Calculate Prices
+                </button>
+            </div>
+        </div>
+
+        <div class="operations-card">
+            <h2>Update Product Suppliers</h2>
+            <p>Link products to their suppliers by matching the supplier name to entries in the suppliers table.</p>
+            <div class="operation-details">
+                <div class="operation-info">
+                    <p><i>This operation updates the <strong>furnizor_id</strong> field for all products that have:</i></p>
+                    <ul>
+                        <li>A supplier name (<strong>furnizor_nume</strong>) field</li>
+                        <li>A matching entry in the suppliers table</li>
+                    </ul>
+                </div>
+                <button id="update-suppliers-btn" class="operation-btn" data-operation="update_suppliers">
+                    Update Supplier Links
+                </button>
+            </div>
+        </div>
+
+        <div id="result-container" class="result-container" style="display: none;">
+            <h3>Operation Results</h3>
+            <div id="result-content" class="result-content">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="static/js/operations.js"></script>
+{% endblock %}
