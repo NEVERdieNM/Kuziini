@@ -56,6 +56,11 @@ def upload_produse():
 
     # Process file for produse table
     results = process_file(save_path, 'produse')
+
+    if results and 'incorrect_table' in results:
+        flash("invalid excel structure for produse", 'error')
+        return redirect(url_for('upload'))
+
     if results and results.get('status') == 'partially processed':
         session['filename'] = results['filename']
         session['table_name'] = 'produse'  # Store the table name for the fix_errors route
@@ -106,6 +111,11 @@ def upload_furnizori():
 
     # Process file for furnizori table
     results = process_file(save_path, 'furnizori')
+
+    if results and 'incorrect_table' in results:
+        flash("invalid excel structure for furnizori", 'error')
+        return redirect(url_for('upload'))
+
     if results and results.get('status') == 'partially processed':
 
         if results.get('failed_rows'):
@@ -350,5 +360,5 @@ if __name__ == '__main__':
     t.start()
 
     webview.create_window("PyWebView & Flask", "http://localhost/")
-    webview.start(debug=True) # debug=True
+    webview.start() # debug=True
     sys.exit()

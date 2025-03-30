@@ -75,6 +75,7 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
     for row_index, row_data in enumerate(data_rows):
         # Clean the data - handle NaN values, etc.
         cleaned_data = clean_and_format_data(row_data, table_schema)
+        cleaned_data.pop("id", None)
         
         # Validate each column against its filter
         validation_errors = []
@@ -123,9 +124,19 @@ def validate_and_insert_data(data_rows, table_name, connection=None):
                 columns = [column[0] for column in cursor.description]
                 existing_data = dict(zip(columns, existing_product))
                 
+                # NOTE: in viitor ar trebui sa modific impementarea aceasta, folosind pre_process()
                 existing_data.pop("id", None)
+                cleaned_data.pop("id", None)
+
                 existing_data.pop("pret_raft_fara_TVA", None)
+                cleaned_data.pop("pret_raft_fara_TVA", None)
+
                 existing_data.pop("furnizor_id", None)
+                cleaned_data.pop("furnizor_id", None)
+
+                print(existing_data)
+                print(f"\n {existing_data == cleaned_data}\n {dict_differences(existing_data, cleaned_data)} \n\n")
+                print(cleaned_data)
 
                 #if the new data doesn't have any changes, ignore it
                 if existing_data == cleaned_data:
@@ -337,3 +348,19 @@ def clean_and_format_data(row_data, table_schema):
         #         cleaned_data[column] = bool(value)
                 
     return cleaned_data
+
+# FOR DEBUGGING
+def dict_differences(dict1, dict2):
+                    """Find differences between two dictionaries and return them in a readable format."""
+                    all_keys = set(dict1.keys()) | set(dict2.keys())
+                    differences = []
+                    
+                    for key in all_keys:
+                        if key not in dict1:
+                            differences.append(f"Key '{key}' only in second dict with value: {dict2[key]}")
+                        elif key not in dict2:
+                            differences.append(f"Key '{key}' only in first dict with value: {dict1[key]}")
+                        elif dict1[key] != dict2[key]:
+                            differences.append(f"Key '{key}' has different values: {dict1[key]} vs {dict2[key]}")
+                    
+                    return differences

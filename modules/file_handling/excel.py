@@ -38,7 +38,13 @@ def process_file(file_path, table_name):
         
         # Process file
         if name.endswith(('.xls', '.xlsx')):
-            _, failed_rows, duplicate_rows = insert_excel_data_into_db(save_path, table_name)
+            _, failed_rows, duplicate_rows, incorrect_table = insert_excel_data_into_db(save_path, table_name)
+
+            if incorrect_table:
+                return {
+                    'incorrect_table': True
+                }
+
             if failed_rows or duplicate_rows:
                 results = {
                     'filename': name,
@@ -88,9 +94,20 @@ def insert_excel_data_into_db(file_path, table_name):
             df = pd.read_excel(file_path)
 
             rows = df.replace({float('nan'): None}).to_dict('records')
+            
+            # NOTE: implementarea aceasta ar trebui imbunatatita
+            incorrect_table = False
+            if table_name == 'produse' and ('adaos_comercial' in rows[0] or 'adresa' in rows[0]):
+                incorrect_table = True
+                return None, None, None, incorrect_table
+            elif table_name == 'furnizori' and (rows[0].get('cod_produs') or rows[0].get('categorie')):
+                incorrect_table = True
+                return None, None, None, incorrect_table
+
+
             successful_rows, failed_rows, duplicate_rows = validate_and_insert_data(rows, table_name, connection=conn)
 
-            return successful_rows, failed_rows, duplicate_rows
+            return successful_rows, failed_rows, duplicate_rows, incorrect_table
     except Exception as e:
         failed_rows.append({
             'row_number': 'N/A',
@@ -98,7 +115,7 @@ def insert_excel_data_into_db(file_path, table_name):
             'error': f"Failed to read Excel file: {str(e)}"
         })
     
-    return successful_rows, failed_rows, duplicate_rows
+    return successful_rows, failed_rows, duplicate_rows, incorrect_table
 
 
 
